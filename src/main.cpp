@@ -74,8 +74,8 @@ int main() {
           
           //pid_throttle.UpdateError(speed-100);
           //throttle = pid_throttle.TotalError();
-          
-          pid.twiddle();
+          std::cout << "************************************** Twiddle ***************************************" << std::endl;
+          pid.Twiddle();
           
           // DEBUG
           std::cout << "CTE: " << cte << " angle " << angle << " Steering Value: " << steer_value 

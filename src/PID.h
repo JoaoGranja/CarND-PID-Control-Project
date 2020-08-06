@@ -1,6 +1,10 @@
 #ifndef PID_H
 #define PID_H
 
+#include <vector>
+#include <numeric>
+#include <iostream>
+
 class PID {
  public:
   /**
@@ -24,6 +28,13 @@ class PID {
    * @param cte The current cross track error
    */
   void UpdateError(double cte);
+  
+  /**
+   * Update the PID control gain.
+   * @param gain new control gain
+   * @param indice indice of the new control gain
+   */
+  void UpdateGain(double gain, int indice);
 
   /**
    * Calculate the total PID error.
@@ -34,7 +45,7 @@ class PID {
   /**
    * Update PID control gains based on total PID error
    */
-  double Twiddle();
+  void Twiddle();
 
  private:
   /**
@@ -52,7 +63,8 @@ class PID {
   double Kd;
   
   double best_error;
-  double indice;
+  int indice;
+  std::vector<double> dp = {0.01, 0.01, 0.01};
 };
 
 #endif  // PID_H

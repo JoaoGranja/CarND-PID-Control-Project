@@ -2,6 +2,8 @@
 
 # Make sure you have the latest version of the repo
 echo
+git init
+git remote add origin https://github.com/udacity/CarND-PID-Control-Project.git
 git pull
 echo
 

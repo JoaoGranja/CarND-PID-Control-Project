@@ -30,6 +30,11 @@ class PID {
    * @output The total PID error
    */
   double TotalError();
+  
+  /**
+   * Update PID control gains based on total PID error
+   */
+  double Twiddle();
 
  private:
   /**
@@ -45,6 +50,9 @@ class PID {
   double Kp;
   double Ki;
   double Kd;
+  
+  double best_error;
+  double indice;
 };
 
 #endif  // PID_H

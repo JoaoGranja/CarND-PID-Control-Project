@@ -62,9 +62,10 @@ class PID {
   double Ki;
   double Kd;
   
-  double best_error;
+  std::vector<double> n_errors;
   int indice;
-  std::vector<double> dp = {0.01, 0.01, 0.01};
+  int twiddle_state;
+  std::vector<double> dp = {0.001, 0.001, 0.001};
 };
 
 #endif  // PID_H

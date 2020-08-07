@@ -60,9 +60,9 @@ double PID::TotalError() {
 void PID::Twiddle(){
   
   double sum_of_elems = 0.0;
-  static bool first_time = true;
+  static int error_count = 0;
   std::vector<double> p = {Kp, Ki, Kd};
-  double error;
+  double error, average_error;
 
   sum_of_elems = dp[0] + dp[1] + dp[2];
   
@@ -71,47 +71,70 @@ void PID::Twiddle(){
     return;
   }
   
-  if(first_time)
+  // As the cte changes during the simulation, I consider the average error instead of minimum one
+  if(error_count <10)
   {
-    best_error = 100000;
+    n_errors.push_back(p_error*p_error);
     indice = 0;
-    first_time = false;
+    twiddle_state = 0;
+    error_count ++;
+    return;
   }
   
+  average_error = accumulate( n_errors.begin(), n_errors.end(), 0.0)/ n_errors.size();
   
-  // increase the control gain
-  p[indice] += dp[indice];
-  UpdateGain(p[indice], indice);
-  error = TotalError();
+  error = p_error*p_error;
+  
+  //Remove last error and add a new one
+  n_errors.pop_back();
+  n_errors.push_back(error);
 
-  if(error < best_error){
-    best_error = error;
-    std::cout << "increase the control gain " << indice << std::endl;
-    dp[indice] *= 1.1;
-  }
-  else
+  std::cout << "error: " << error << " average_error " << average_error << std::endl;
+  
+  switch(twiddle_state)
   {
-    // decrease the control gain
-    p[indice] -= 2 * dp[indice];
-    UpdateGain(p[indice], indice);
-    error = TotalError();
-
-    if(error < best_error){
-      best_error = error;
-      std::cout << "decrease the control gain " << indice << std::endl;
-      dp[indice] *= 1.1;
-    }
-    else
-    {
-      // decrease the delta control gain
+    case 0:
+      // increase the control gain
+ 	  twiddle_state = 1;
       p[indice] += dp[indice];
-      std::cout << "decrease the delta control gain " << indice << std::endl;
-      dp[indice] *= 0.9;
-    }
-  }   
+      break;
+    case 1:
+      if(error < average_error){
+        // increase the delta control gain
+        std::cout << "increase the delta control gain " << indice << std::endl;
+        dp[indice] *= 1.1;
+        twiddle_state = 0;
+        indice = (indice + 1) % 3;
+      }
+      else
+      {
+        // decrease the control gain
+        p[indice] -= 2 * dp[indice];
+        twiddle_state = 2;
+      }
+      break;
+    case 2:
+      if(error < average_error){
+        // increase the delta control gain
+        std::cout << "increase the delta control gain " << indice << std::endl;
+        dp[indice] *= 1.1;
+      }
+      else
+      {
+        // decrease the delta control gain
+        p[indice] += dp[indice];
+        std::cout << "decrease the delta control gain " << indice << std::endl;
+        dp[indice] *= 0.9;
+      }
+      twiddle_state = 0;
+      indice = (indice + 1) % 3;
+      break;
+    default:
+      break;
+  } 
 
   UpdateGain(p[indice], indice);
-  indice = (indice + 1) % 3;
+  std::cout << "Kd = " << Kd << "   Ki = " << Ki  << "   Kp = " << Kp << std::endl;
 }
   
   

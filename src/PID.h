@@ -2,8 +2,9 @@
 #define PID_H
 
 #include <vector>
-#include <numeric>
+#include <cmath>
 #include <iostream>
+#include <limits>
 
 class PID {
  public:
@@ -45,7 +46,7 @@ class PID {
   /**
    * Update PID control gains based on total PID error
    */
-  void Twiddle();
+  void Twiddle(double cte, double steer_error);
 
  private:
   /**
@@ -62,10 +63,14 @@ class PID {
   double Ki;
   double Kd;
   
-  std::vector<double> n_errors;
-  int indice;
+  std::vector<double> KG;
+  
+  // variables for twiddle algorithm
+  double best_error;
+  int twiddle_indice;
   int twiddle_state;
-  std::vector<double> dp = {0.001, 0.001, 0.001};
+  std::vector<double> dp;
+  int twiddle_count = 0;
 };
 
 #endif  // PID_H

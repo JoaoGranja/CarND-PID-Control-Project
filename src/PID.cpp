@@ -4,6 +4,10 @@
  * TODO: Complete the PID class. You may add any additional desired functions.
  */
 
+#define INIT           (int)0    // Initial state of Twiddle
+#define INCREASE_DELTA (int)1    // Increase the delta gain
+#define DECREASE_DELTA (int)2    // Decrease the delta gain
+
 PID::PID() {}
 
 PID::~PID() {}
@@ -12,14 +16,18 @@ void PID::Init(double Kp_, double Ki_, double Kd_) {
   /**
    * TODO: Initialize PID coefficients (and errors, if needed)
    */
-  Kp = Kp_;
-  Ki = Ki_;
-  Kd = Kd_;
+
+  KG = {Kp_, Ki_, Kd_};
   
   p_error = 0;
   i_error = 0;
   d_error = 0;
   
+  dp = {0.1*Kp_, 0.1*Ki_, 0.1*Kd_};
+  
+  twiddle_indice = 0;
+  twiddle_state = INIT;
+  best_error = 100000;
 }
 
 void PID::UpdateError(double cte) {
@@ -31,110 +39,98 @@ void PID::UpdateError(double cte) {
   i_error += cte;
 }
 
-void PID::UpdateGain(double gain, int indice) {
-  /**
-   * TODO: Update PID gain.
-   */
-  if(indice == 0)
-  {
-    Kp = gain;
-  }
-  else if(indice == 1)
-  {
-  	Ki = gain;
-  }
-  else{
-  	Kd = gain;
-  }
-}
-
 double PID::TotalError() {
   /**
    * TODO: Calculate and return the total error
    */
   double total_error;
-  total_error = -Kp * p_error - Kd * d_error - Ki * i_error;
+  total_error = -KG[0] * p_error - KG[1] * i_error - KG[2] * d_error;
+  
+  //remember the steering value should be [-1, 1].
+  if(total_error > 1.0)
+    return 1.0;
+    
+  if(total_error < -1.0)
+    return-1.0;
+    
   return total_error;  // TODO: Add your total error calc here!
 }
 
-void PID::Twiddle(){
+void PID::Twiddle(double cte, double steer_error){
   
   double sum_of_elems = 0.0;
-  static int error_count = 0;
-  std::vector<double> p = {Kp, Ki, Kd};
-  double error, average_error;
-
   sum_of_elems = dp[0] + dp[1] + dp[2];
+  double error;
   
   // if sum of dp elements is too small, return
-  if(sum_of_elems < 0.0001){
-    return;
-  }
-  
-  // As the cte changes during the simulation, I consider the average error instead of minimum one
-  if(error_count <10)
+  if((sum_of_elems < 0.0001))
   {
-    n_errors.push_back(p_error*p_error);
-    indice = 0;
-    twiddle_state = 0;
-    error_count ++;
+    std::cout << "Kp = " << KG[0] << "   Ki = " << KG[1]  << "   Kd = " << KG[2] << std::endl;
+    twiddle_count ++;
     return;
   }
   
-  average_error = accumulate( n_errors.begin(), n_errors.end(), 0.0)/ n_errors.size();
+  std::cout << "cte: " << cte  << " best_error " << best_error << std::endl;
   
-  error = p_error*p_error;
+  if(cte < 0)
+    cte *= -1.0;
   
-  //Remove last error and add a new one
-  n_errors.pop_back();
-  n_errors.push_back(error);
-
-  std::cout << "error: " << error << " average_error " << average_error << std::endl;
+  if(steer_error < 0)
+    steer_error *= -1.0;
+  //if((twiddle_count % 100 ) == 0)
+  //  best_error = 100000;
+  
+  error = cte + steer_error;
   
   switch(twiddle_state)
   {
-    case 0:
+    case INIT:
       // increase the control gain
- 	  twiddle_state = 1;
-      p[indice] += dp[indice];
+ 	  twiddle_state = INCREASE_DELTA;
+      KG[twiddle_indice] += dp[twiddle_indice];
+      std::cout << "increase the delta gain " << twiddle_indice << std::endl;
       break;
-    case 1:
-      if(error < average_error){
+    case INCREASE_DELTA:
+      if(error <best_error){
         // increase the delta control gain
-        std::cout << "increase the delta control gain " << indice << std::endl;
-        dp[indice] *= 1.1;
-        twiddle_state = 0;
-        indice = (indice + 1) % 3;
+        std::cout << "increase the delta control gain " << twiddle_indice << std::endl;
+        dp[twiddle_indice] *= 1.1;
+        twiddle_state = INIT;
+        twiddle_indice = (twiddle_indice + 1) % 3;
+        best_error = error;
       }
       else
       {
         // decrease the control gain
-        p[indice] -= 2 * dp[indice];
-        twiddle_state = 2;
+        KG[twiddle_indice] -= 2 * dp[twiddle_indice];
+        twiddle_state = DECREASE_DELTA;
+        std::cout << "decrease the delta gain " << twiddle_indice << std::endl;
       }
       break;
-    case 2:
-      if(error < average_error){
+    case DECREASE_DELTA:
+      if(error < best_error){
         // increase the delta control gain
-        std::cout << "increase the delta control gain " << indice << std::endl;
-        dp[indice] *= 1.1;
+        std::cout << "increase the delta control gain " << twiddle_indice << std::endl;
+        dp[twiddle_indice] *= 1.1;
+        best_error = error;
       }
       else
       {
         // decrease the delta control gain
-        p[indice] += dp[indice];
-        std::cout << "decrease the delta control gain " << indice << std::endl;
-        dp[indice] *= 0.9;
+        KG[twiddle_indice] += dp[twiddle_indice];
+        std::cout << "decrease the delta control gain " << twiddle_indice << std::endl;
+        dp[twiddle_indice] *= 0.9;
       }
-      twiddle_state = 0;
-      indice = (indice + 1) % 3;
+      twiddle_state = INIT;
+      twiddle_indice = (twiddle_indice + 1) % 3;
       break;
     default:
       break;
   } 
 
-  UpdateGain(p[indice], indice);
-  std::cout << "Kd = " << Kd << "   Ki = " << Ki  << "   Kp = " << Kp << std::endl;
+  std::cout << "Kp = " << KG[0] << "   Ki = " << KG[1]  << "   Kd = " << KG[2] << std::endl;
+  twiddle_count ++;
+  return;
 }
   
   

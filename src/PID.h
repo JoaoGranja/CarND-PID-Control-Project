@@ -30,12 +30,6 @@ class PID {
    */
   void UpdateError(double cte);
   
-  /**
-   * Update the PID control gain.
-   * @param gain new control gain
-   * @param indice indice of the new control gain
-   */
-  void UpdateGain(double gain, int indice);
 
   /**
    * Calculate the total PID error.
@@ -44,9 +38,9 @@ class PID {
   double TotalError();
   
   /**
-   * Update PID control gains based on total PID error
+   * Update PID control gains based on cte error
    */
-  void Twiddle(double cte, double steer_error);
+  void Twiddle(double cte);
 
  private:
   /**

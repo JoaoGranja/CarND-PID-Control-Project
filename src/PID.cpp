@@ -23,7 +23,7 @@ void PID::Init(double Kp_, double Ki_, double Kd_) {
   i_error = 0;
   d_error = 0;
   
-  dp = {0.1*Kp_, 0.1*Ki_, 0.1*Kd_};
+  dp = {0.01*Kp_, 0.01*Ki_, 0.01*Kd_};
   
   twiddle_indice = 0;
   twiddle_state = INIT;
@@ -56,31 +56,36 @@ double PID::TotalError() {
   return total_error;  // TODO: Add your total error calc here!
 }
 
-void PID::Twiddle(double cte, double steer_error){
+void PID::Twiddle(double cte){
   
   double sum_of_elems = 0.0;
   sum_of_elems = dp[0] + dp[1] + dp[2];
-  double error;
+  static double error;
   
   // if sum of dp elements is too small, return
-  if((sum_of_elems < 0.0001))
+  if((sum_of_elems < 0.0001) || (twiddle_count < 10))
   {
     std::cout << "Kp = " << KG[0] << "   Ki = " << KG[1]  << "   Kd = " << KG[2] << std::endl;
     twiddle_count ++;
     return;
   }
   
-  std::cout << "cte: " << cte  << " best_error " << best_error << std::endl;
-  
   if(cte < 0)
-    cte *= -1.0;
+    cte *= -1.0;  
   
-  if(steer_error < 0)
-    steer_error *= -1.0;
-  //if((twiddle_count % 100 ) == 0)
-  //  best_error = 100000;
+  if(twiddle_count < 500)
+  {
+    twiddle_count ++;
+    error += cte;
+    return;
+  }
+  else
+  {
+    twiddle_count = 0;
+  }
   
-  error = cte + steer_error;
+  std::cout << "error: " << error  << " best_error " << best_error << std::endl;
+  
   
   switch(twiddle_state)
   {
@@ -130,6 +135,10 @@ void PID::Twiddle(double cte, double steer_error){
 
   std::cout << "Kp = " << KG[0] << "   Ki = " << KG[1]  << "   Kd = " << KG[2] << std::endl;
   twiddle_count ++;
+  error = 0;
+  
+  if( (KG[twiddle_indice] == 0) && (dp[twiddle_indice] == 0))
+    twiddle_indice = (twiddle_indice + 1) % 3;
   return;
 }
   

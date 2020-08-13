@@ -38,7 +38,7 @@ int main() {
   /**
    * TODO: Initialize the pid variable.
    */
-  pid.Init(0.1,0,3); //0.1,0,10
+  pid.Init(0.1,0,1); //0.1,0,10
   pid_throttle.Init(1,0,0);
 
   h.onMessage([&pid, &pid_throttle](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
@@ -63,7 +63,6 @@ int main() {
           double throttle;
           double speed_error;
           static int i;
-          static double previous_steer_value;
           /**
            * TODO: Calculate steering value here, remember the steering value is
            *   [-1, 1].
@@ -72,14 +71,13 @@ int main() {
            */
           speed_error = speed-50;
           
-          previous_steer_value = pid.TotalError();
           pid.UpdateError(cte);
-          //pid_throttle.UpdateError(speed_error);
+          pid_throttle.UpdateError(speed_error);
          
           i += 1;
           std::cout << "************************************ Iteration " << i << " ***************************************" 
             		<< std::endl;
-          pid.Twiddle(cte, steer_value - previous_steer_value);
+          //pid.Twiddle(cte);
           //pid_throttle.Twiddle(speed_error);
 
           
@@ -94,7 +92,7 @@ int main() {
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          msgJson["throttle"] = throttle;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
